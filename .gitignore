@@ -1,0 +1,54 @@
+# ROS build files
+build/
+devel/
+install/
+log/
+
+# Catkin/CMake
+catkin_generated/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Qt Creator
+CMakeLists.txt.user
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Swap files
+*~
+*.swp
+*.swo
+
+# ROS 2 specific logs
+*.log
+
+# Colcon (ROS 2 build tool)
+colcon-core/
+colcon.meta
+
+# ROS 2 overlay workspace
+*.rosinstall
+
+# Test results
+test_results/
+
+# Install setup files (ROS 2)
+local_setup.*
+setup.*
+
+# Other common ignores
+.env
+*.bak
+*.old
