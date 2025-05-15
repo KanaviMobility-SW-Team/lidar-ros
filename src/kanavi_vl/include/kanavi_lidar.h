@@ -159,7 +159,8 @@ private:
 
 	int checked_model;
 	bool checked_pares_end;
-	bool checked_ch_r4[4];
+	// use bitmast
+	uint32_t checked_ch;
 
 	bool checked_ch0_inputed;
 	size_t total_size;

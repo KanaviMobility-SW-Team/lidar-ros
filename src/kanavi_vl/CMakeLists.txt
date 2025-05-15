@@ -108,6 +108,18 @@ if($ENV{ROS_VERSION} STREQUAL "1")
 		kanavi_lidar
 		${catkin_LIBRARIES}
 	)
+
+	#----define R2 node 
+	add_executable(R2 
+		src/R2/main.cpp
+	)
+
+	target_link_libraries(R2
+		kanavi_node
+		kanavi_udp
+		kanavi_lidar
+		${catkin_LIBRARIES}
+	)
 	
 #############
 ## Install ##
