@@ -10,7 +10,7 @@ kanavi_lidar::kanavi_lidar(int model_)
 	datagram_ = new kanaviDatagram(model_);
 	checked_onGoing = false;
 	checked_pares_end = false;
-	memset(checked_ch_r4, false, 4);
+	checked_ch = 0;
 
 	checked_ch0_inputed = false;
 
@@ -181,22 +181,39 @@ void kanavi_lidar::parse(const std::vector<u_char> &data)
 
 void kanavi_lidar::r2(const std::vector<u_char> &input, kanaviDatagram *output)
 {
-	// u_char mode = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
-	// u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
+	u_char mode = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
+	u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
 
-	// if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA)
-	// {
-	// 	// check ch 0 data input
-	// 	if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
-	// 	{
-	// 		// set specification
-	// 		{
-	// 			output->v_resolution = KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_RESOLUTION;
-	// 			output->h_resolution = KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_RESOLUTION;
-	// 		}
-	// 	}
-	// 	parseLength(input, output, static_cast<int>(ch & 0x0F)); // convert byte to length
-	// }
+	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA)
+	{
+		// check ch 0 data input
+		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
+		{
+			// set specification
+			{
+				output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
+				output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
+			}
+		}
+
+		uint8_t nCh = ch & 0x0F;
+		checked_ch = checked_ch | (1 << nCh);
+		parseLength(input, output, static_cast<int>(nCh)); // convert byte to length
+
+		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_1)
+		{
+			if (checked_ch == 0b0011)
+			{
+				checked_pares_end = true;
+			}
+			else
+			{
+				printf("[LiDAR] Align ERROR#####\n");
+			}
+
+			checked_ch = 0;
+		}
+	}
 }
 
 void kanavi_lidar::r4(const std::vector<u_char> &input, kanaviDatagram *output)
@@ -215,23 +232,24 @@ void kanavi_lidar::r4(const std::vector<u_char> &input, kanaviDatagram *output)
 				output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
 			}
 		}
-		// printf("[LiDAR] Process CH : %d\n", ch & 0x0F);
-		checked_ch_r4[ch & 0x0F] = true;
-		parseLength(input, output, static_cast<int>(ch & 0x0F)); // convert byte to length
+		
+		uint8_t nCh = ch & 0x0F;
+		checked_ch = checked_ch | (1 << nCh);
+		parseLength(input, output, static_cast<int>(nCh)); // convert byte to length
 
 		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_3)
 		{
 			// checked_onGoing = true;
-			if (checked_ch_r4[0] && checked_ch_r4[1] && checked_ch_r4[2] && checked_ch_r4[3])
+			if (checked_ch == 0b1111)
 			{
-				memset(checked_ch_r4, false, 4);
 				checked_pares_end = true;
 			}
 			else
 			{
-				memset(checked_ch_r4, false, 4);
 				printf("[LiDAR] Align ERROR#####\n");
 			}
+
+			checked_ch = 0;
 		}
 	}
 }
