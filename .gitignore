@@ -52,3 +52,7 @@ setup.*
 .env
 *.bak
 *.old
+
+# Build-generated files
+.catkin_workspace
+src/CMakeLists.txt
