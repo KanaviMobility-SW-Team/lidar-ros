@@ -165,7 +165,15 @@ void kanavi_node::run()
 			rotateAxisZ(g_pointcloud, rotate_angle);
 
 			// streaming..
-			printf("[NODE] PUBLISHING : %dCH\n", kanavi_->getDatagram().current_ch+1);
+			printf("-------r--KANAVI PROCESS------------\n");
+			for (size_t i = 0; i < kanavi_->getDatagram().count_ch; ++i) {
+				if (kanavi_->getDatagram().active_ch[i]) 
+				{
+					printf("[NODE] PUBLISHING : %dCH\n", i+1);
+				}
+			}
+			kanavi_->getDatagram().active_ch.assign(kanavi_->getDatagram().count_ch, false);  
+
 			publisher_.publish(cloud_to_cloud_msg(g_pointcloud->width,
 												  g_pointcloud->height,
 												  *g_pointcloud,
