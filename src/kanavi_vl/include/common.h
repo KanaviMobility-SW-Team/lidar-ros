@@ -41,7 +41,7 @@ namespace KANAVI
 				const double	VERTICAL_FoV			= 3.0;
 				const double	VERTICAL_RESOLUTION		= 1.5;
 				const int		VERTICAL_CHANNEL		= static_cast<int>(VERTICAL_FoV / VERTICAL_RESOLUTION);
-				const size_t	RAW_TOTAL_SIZE = 969;
+				const size_t	RAW_TOTAL_SIZE			= 969;
 				const float		BASE_ZERO_ANGLE			= -30;
 			}
 			namespace R4{
@@ -51,7 +51,7 @@ namespace KANAVI
 				const double	VERTICAL_FoV			= 4.8;
 				const double	VERTICAL_RESOLUTION		= 1.2;
 				const int		VERTICAL_CHANNEL		= static_cast<int>(VERTICAL_FoV / VERTICAL_RESOLUTION);
-				const size_t	RAW_TOTAL_SIZE = 809;
+				const size_t	RAW_TOTAL_SIZE			= 809;
 				const float		BASE_ZERO_ANGLE			= 60;
 			}
 			namespace R270{
@@ -61,7 +61,7 @@ namespace KANAVI
 				const double	VERTICAL_FoV			= 1;
 				const double	VERTICAL_RESOLUTION		= 1;
 				const int		VERTICAL_CHANNEL		= static_cast<int>(VERTICAL_FoV / VERTICAL_RESOLUTION);
-				const size_t	RAW_TOTAL_SIZE = 2169;
+				const size_t	RAW_TOTAL_SIZE			= 2169;
 				const float		BASE_ZERO_ANGLE			= -30;
 			}
 		};
