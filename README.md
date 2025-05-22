@@ -2,7 +2,7 @@
 
 ## 1. 프로젝트 개요
 
-Kanavi Mobility의 LiDAR ROS는 ROS1과 ROS2를 하나의 소스 트리에서 동시에 빌드 및 실행할 수 있도록 구성된 하이브리드 구조입니다.
+Kanavi Mobility의 LiDAR ROS는 ROS1과 ROS2를 하나의 소스 트리에서 동시에 빌드 및 실행할 수 있도록 구성된 하이브리드 구조입니다.  
 Kanavi Mobility LiDAR 모델(R2, R4, R270)을 지원하며 UDP를 기반으로로 데이터를 수신하고, ROS1 또는 ROS2 메시지로 퍼블리시합니다.
 
 ### 지원하는 OS
@@ -93,6 +93,7 @@ directory/
 
 ```bash
 catkin_make
+source devel/setup.bash
 rosrun kanavi_vl R4 -h
 ```
 
@@ -100,6 +101,7 @@ rosrun kanavi_vl R4 -h
 
 ```bash
 colcon build
+source install/setup.bash
 ros2 run kanavi_vl R4 -h
 ```
 
@@ -165,6 +167,8 @@ ros2 run kanavi_vl R4 -i 192.168.123.100 5000 -m 224.0.0.5
 
 ##### ROS2/R270
 ![ros2 R270](./images/ros2_r270.png)
+
+💡 ROS2에서 topic이 보이지 않는 경우, 2개 이상의 RViz를 열어서 다시 실행해보세요.
 
 ---
 

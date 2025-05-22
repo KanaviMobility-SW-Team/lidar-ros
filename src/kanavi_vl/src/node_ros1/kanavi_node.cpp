@@ -156,6 +156,7 @@ void kanavi_node::run()
 		// get Point Cloud from Lidar processor
 		if (kanavi_->checkedProcessEnd())
 		{
+			kanavi_->initProcessEnd();
 
 			// datagram Length -> pointcloud
 			length2PointCloud(kanavi_->getDatagram());
@@ -164,7 +165,7 @@ void kanavi_node::run()
 			rotateAxisZ(g_pointcloud, rotate_angle);
 
 			// streaming..
-			printf("[NODE] PULISHING\n");
+			printf("[NODE] PUBLISHING : %dCH\n", kanavi_->getDatagram().current_ch+1);
 			publisher_.publish(cloud_to_cloud_msg(g_pointcloud->width,
 												  g_pointcloud->height,
 												  *g_pointcloud,

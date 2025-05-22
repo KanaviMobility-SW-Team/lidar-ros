@@ -12,7 +12,7 @@ kanavi_lidar::kanavi_lidar(int model_)
 	checked_pares_end = false;
 	checked_ch = 0;
 
-	checked_ch0_inputed = false;
+	checked_lidar_inputed = false;
 
 	checked_model = -1;
 
@@ -59,75 +59,75 @@ int kanavi_lidar::classification(const std::vector<u_char> &data)
 
 int kanavi_lidar::process(const std::vector<u_char> &data)
 {
-	// r270데이터가 끊어져서 들어오므로 합칠 필요가 있음.
-	// hedaer checker
-	bool checked_h = false;
+	u_char mode = data[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
+	u_char ch = data[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
 
 	// header value Check in data
-	if ((data[KANAVI::COMMON::PROTOCOL_POS::HEADER] & 0xFF) == KANAVI::COMMON::PROTOCOL_VALUE::HEADER)
+	if ((data[KANAVI::COMMON::PROTOCOL_POS::HEADER] & 0xFF) != KANAVI::COMMON::PROTOCOL_VALUE::HEADER) 
 	{
-		checked_h = true;
-
-		u_char ch_ = data[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
-
-		// check Model
-		if (!checked_ch0_inputed)
+		if(checked_onGoing)
 		{
-			checked_model = classification(data);
-			if (checked_model == -1)
-			{
-				perror("LiDAR Classification Error!");
-				return -1;
-			}
+			r270(data, datagram_);
+			return 0;
+		}
+		else
+		{
+			printf("[LiDAR] Invalid header\n");
+			return -1;
+		}
+	}
 
-			// check Model, one more time
-			if (checked_model != datagram_->model)
-			{
-				perror("LiDAR Model not Matched");
-				return -1;
-			}
+	// check Model
+	if (!checked_lidar_inputed)
+	{
+		checked_model = classification(data);
+		if (checked_model == -1)
+		{
+			perror("LiDAR Classification Error!");
+			return -1;
 		}
 
-		if (ch_ == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
+		// check Model, one more time
+		if (checked_model != datagram_->model)
+		{
+			perror("LiDAR Model not Matched");
+			return -1;
+		}
+		checked_lidar_inputed = true;
+		checked_ch = ch;
+	}
+	
+
+	// Process data based on mode
+	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA) {
+		if(ch == checked_ch)
 		{
 			printf("---------KANAVI PROCESS------------\n");
-
-			checked_ch0_inputed = true;
-			checked_pares_end = false;
-			temp_buf_.clear();
-			switch (checked_model)
-			{
-			case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R2:
-				/* code */
-				total_size = KANAVI::R2::DATASIZE * 2;
-				break;
-			case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270:
-				total_size = KANAVI::R270::DATASIZE;
-				/* code */
-				break;
-			case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4:
-				total_size = KANAVI::R4::DATASIZE * 4;
-				/* code */
-				break;
-			default:
-				break;
+		}
+		
+		try {
+			// Process the data directly
+			switch (checked_model) {
+				case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R2:
+					r2(data, datagram_);
+					break;
+				case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4:
+					r4(data, datagram_);
+					break;
+				case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270:
+					r270(data, datagram_);
+					break;
+				default:
+					printf("[LiDAR] Unknown model\n");
+					return -1;
 			}
+			
+		} catch (const std::exception& e) {
+			printf("[LiDAR] Error in process: %s\n", e.what());
+			return -1;
 		}
 	}
-
-	if (checked_ch0_inputed)
-	{
-		// 0번 채널이 들어온 이후부터 데이터 축적
-		temp_buf_.insert(temp_buf_.end(), data.begin(), data.end());
-		printf("[LiDAR] Processing...\n");
-	}
-
-	// 채널이 많으면 채널을 확인해서 전부 취합되었는지 확인
-	if (temp_buf_.size() == total_size)
-	{
-		parse(temp_buf_);
-		checked_ch0_inputed = false;
-	}
+	return 0;
 }
 
 std::string kanavi_lidar::getLiDARModel()
@@ -137,41 +137,19 @@ std::string kanavi_lidar::getLiDARModel()
 
 void kanavi_lidar::parse(const std::vector<u_char> &data)
 {
+	if (data.size() < KANAVI::COMMON::PROTOCOL_POS::RAWDATA_START)
+	{
+		printf("[LiDAR] Invalid data size\n");
+		return;
+	}
+
 	switch (datagram_->model)
 	{
 	case KANAVI::COMMON::PROTOCOL_VALUE::R2:
-		for (int i = 0; i < 2; i++)
-		{
-			auto start = data.begin() + i * KANAVI::R2::DATASIZE;
-			auto end = start + KANAVI::R2::DATASIZE;
-
-			if (end <= data.end())
-			{ // 벡터 범위 체크
-				r2(std::vector<u_char>(start, end), datagram_);
-			}
-			else
-			{
-				// 데이터 부족 시 처리 로직
-				std::cerr << "Not enough data for chunk " << i << std::endl;
-			}
-		}
+		r2(data, datagram_);
 		break;
 	case KANAVI::COMMON::PROTOCOL_VALUE::R4:
-		for (int i = 0; i < 4; i++)
-		{
-			auto start = data.begin() + i * KANAVI::R4::DATASIZE;
-			auto end = start + KANAVI::R4::DATASIZE;
-
-			if (end <= data.end())
-			{ // 벡터 범위 체크
-				r4(std::vector<u_char>(start, end), datagram_);
-			}
-			else
-			{
-				// 데이터 부족 시 처리 로직
-				std::cerr << "Not enough data for chunk " << i << std::endl;
-			}
-		}
+		r4(data, datagram_);
 		break;
 	case KANAVI::COMMON::PROTOCOL_VALUE::R270:
 		r270(data, datagram_);
@@ -183,74 +161,50 @@ void kanavi_lidar::r2(const std::vector<u_char> &input, kanaviDatagram *output)
 {
 	u_char mode = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
 	u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
+	int channel = static_cast<int>(ch & 0x0F);
 
 	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA)
 	{
-		// check ch 0 data input
-		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
+		// set specification
 		{
-			// set specification
-			{
-				output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
-				output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
-			}
+			output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
+			output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
+			output->current_ch = channel;
 		}
 
-		uint8_t nCh = ch & 0x0F;
-		checked_ch = checked_ch | (1 << nCh);
-		parseLength(input, output, static_cast<int>(nCh)); // convert byte to length
-
-		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_1)
-		{
-			if (checked_ch == 0b0011)
-			{
-				checked_pares_end = true;
-			}
-			else
-			{
-				printf("[LiDAR] Align ERROR#####\n");
-			}
-
-			checked_ch = 0;
-		}
+		parseLength(input, output, channel); // convert byte to length
+		checked_pares_end = true;
 	}
 }
 
 void kanavi_lidar::r4(const std::vector<u_char> &input, kanaviDatagram *output)
 {
-	u_char mode = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
-	u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
+	try {
+		u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
+		int channel = static_cast<int>(ch & 0x0F);
 
-	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA)
-	{
-		// check ch 0 data input
-		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
-		{
-			// set specification
-			{
-				output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
-				output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
-			}
+		// Validate channel number
+		if (channel >= KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL) {
+			printf("[LiDAR] Invalid channel number: %d\n", channel);
+			return;
 		}
-		
-		uint8_t nCh = ch & 0x0F;
-		checked_ch = checked_ch | (1 << nCh);
-		parseLength(input, output, static_cast<int>(nCh)); // convert byte to length
 
-		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_3)
-		{
-			// checked_onGoing = true;
-			if (checked_ch == 0b1111)
-			{
-				checked_pares_end = true;
-			}
-			else
-			{
-				printf("[LiDAR] Align ERROR#####\n");
-			}
-
-			checked_ch = 0;
+		// Ensure len_buf is properly initialized
+		if (output->len_buf.empty() || output->len_buf.size() <= channel) {
+			printf("[LiDAR] len_buf not properly initialized for channel %d\n", channel);
+			return;
 		}
+
+		// set specification for any channel
+		output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
+		output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
+		output->current_ch = channel;
+
+		// process the current channel data
+		parseLength(input, output, channel);
+		checked_pares_end = true;
+	} catch (const std::exception& e) {
+		printf("[LiDAR] Error in r4: %s\n", e.what());
 	}
 }
 
@@ -259,48 +213,87 @@ void kanavi_lidar::r270(const std::vector<u_char> &input, kanaviDatagram *output
 	u_char mode = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::MODE)];
 	u_char ch = input[static_cast<int>(KANAVI::COMMON::PROTOCOL_POS::COMMAND::PARAMETER)];
 
-	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA)
+	// 첫 번째 패킷인 경우 (채널값 + 데이터)
+	if (temp_buf_.empty()) // == !checked_onGoing
 	{
-		// check ch 0 data input
-		if (ch == KANAVI::COMMON::PROTOCOL_VALUE::CHANNEL::CHANNEL_0)
-		{
-			// set specification
-			{
-				output->v_resolution = KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_RESOLUTION;
-				output->h_resolution = KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_RESOLUTION;
-			}
+		checked_onGoing = true;
 
-			parseLength(input, output, static_cast<int>(ch & 0x0F)); // convert byte to length
-			checked_pares_end = true;
-		}
+		// set specification
+		output->v_resolution = KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_RESOLUTION;
+		output->h_resolution = KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_RESOLUTION;
+		
+		// 첫 번째 패킷 데이터 저장
+		temp_buf_ = input;
+	}
+	// 두 번째 패킷인 경우 (나머지 데이터)
+	else
+	{
+		// 두 번째 패킷은 헤더 체크를 하지 않음
+		// 두 패킷의 데이터를 합쳐서 처리
+		std::vector<u_char> combined_data;
+		combined_data.insert(combined_data.end(), temp_buf_.begin(), temp_buf_.end());
+		combined_data.insert(combined_data.end(), input.begin(), input.end());
+		
+		// 합쳐진 데이터 처리
+		parseLength(combined_data, output, 0);
+		checked_pares_end = true;
+		
+		// 다음 프레임을 위해 초기화
+		temp_buf_.clear();
+		checked_onGoing = false;
 	}
 }
 
 void kanavi_lidar::parseLength(const std::vector<u_char> &input, kanaviDatagram *output, int ch)
 {
-	std::vector<float> len_;
+	try {
+		// Calculate expected size
+		int start = KANAVI::COMMON::PROTOCOL_POS::RAWDATA_START;
+		int end = input.size() - KANAVI::COMMON::PROTOCOL_SIZE::CHECKSUM;
+		int expected_size = (end - start) / 2;
 
-	int start = KANAVI::COMMON::PROTOCOL_POS::RAWDATA_START;
-	int end = input.size() - KANAVI::COMMON::PROTOCOL_SIZE::CHECKSUM;
+		if (expected_size <= 0) {
+			printf("[LiDAR] Invalid data size: start=%d, end=%d\n", start, end);
+			return;
+		}
 
-	float up = 0;
-	float low = 0;
-	float len = 0;
+		// Create new vector with proper size
+		std::vector<float> len_;
+		len_.reserve(expected_size);
 
-	for (int i = start; i < end; i += 2)
-	{
-		up = input[i];
-		low = input[i + 1];
-		len = up + low / 100; // convert 2 byte to length[m]
-		len_.push_back(len);
+		// Process data
+		for (int i = start; i < end; i += 2) {
+			if (i + 1 >= static_cast<int>(input.size())) {
+				printf("[LiDAR] Data size error at index %d\n", i);
+				break;
+			}
+			float up = input[i];
+			float low = input[i + 1];
+			float len = up + low / 100; // convert 2 byte to length[m]
+			len_.push_back(len);
+		}
+
+		// Verify the processed data
+		if (len_.empty()) {
+			printf("[LiDAR] No valid data processed for channel %d\n", ch);
+			return;
+		}
+
+		// Update the output buffer
+		output->len_buf[ch] = std::move(len_);
+	} catch (const std::exception& e) {
+		printf("[LiDAR] Error in parseLength: %s\n", e.what());
 	}
-	output->len_buf[ch] = len_;
-	// checked_pares_end = true;
 }
 
 bool kanavi_lidar::checkedProcessEnd()
 {
 	return checked_pares_end;
+}
+
+void kanavi_lidar::initProcessEnd()
+{
+	checked_pares_end = false;
 }
 
 kanaviDatagram kanavi_lidar::getDatagram()

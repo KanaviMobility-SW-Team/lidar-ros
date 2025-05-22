@@ -112,7 +112,7 @@ void kanavi_node::receiveData()
 {
 	// recv data using udp
 	std::vector<u_char> recv_buf = m_udp->getData();
-	RCLCPP_INFO(this->get_logger(), "Received data size: %ld", recv_buf.size());
+	// RCLCPP_INFO(this->get_logger(), "Received data size: %ld", recv_buf.size());
 
 	if(recv_buf.size() > 0)
 	{
@@ -126,6 +126,7 @@ void kanavi_node::receiveData()
 
 		rotateAxisZ(g_pointcloud, rotate_angle);
 
+		printf("[NODE] PUBLISHING : %dCH\n", m_process->getDatagram().current_ch+1);
 		publish_pointcloud(g_pointcloud);
 
 		g_pointcloud->clear();
