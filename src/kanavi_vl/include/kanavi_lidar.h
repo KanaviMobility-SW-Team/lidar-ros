@@ -47,6 +47,8 @@ typedef struct kanavi_datagram{
 	std::vector< std::vector<float> > len_buf;
 	// raw data size
 	size_t input_packet_size;
+	// current channel
+	uint8_t current_ch = 0;
 
 	kanavi_datagram(){
 	}
@@ -62,6 +64,9 @@ typedef struct kanavi_datagram{
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R2::RAW_TOTAL_SIZE;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL);
+			for (auto& buf : len_buf) {
+				buf.resize(KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_DATA_CNT, 0.0f);
+			}
 			break;
 		case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4:
 			v_fov = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_FoV;
@@ -71,6 +76,9 @@ typedef struct kanavi_datagram{
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R4::RAW_TOTAL_SIZE;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL);
+			for (auto& buf : len_buf) {
+				buf.resize(KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_DATA_CNT, 0.0f);
+			}
 			break;
 		case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270:
 			v_fov = KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_FoV;
@@ -80,6 +88,9 @@ typedef struct kanavi_datagram{
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R270::RAW_TOTAL_SIZE;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_CHANNEL);
+			for (auto& buf : len_buf) {
+				buf.resize(KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_DATA_CNT, 0.0f);
+			}
 			break;
 		}
 	}
@@ -158,11 +169,10 @@ private:
 	bool checked_onGoing;
 
 	int checked_model;
+	uint8_t checked_ch;
 	bool checked_pares_end;
-	// use bitmast
-	uint32_t checked_ch;
 
-	bool checked_ch0_inputed;
+	bool checked_lidar_inputed;
 	size_t total_size;
 
 public:
@@ -191,6 +201,11 @@ public:
  * @return true if the full packet has been processed.
  */
 	bool checkedProcessEnd();
+
+/**
+ * @brief Initializes the process end flag.
+ */
+	void initProcessEnd();
 
 /**
  * @brief Retrieves the parsed datagram result.

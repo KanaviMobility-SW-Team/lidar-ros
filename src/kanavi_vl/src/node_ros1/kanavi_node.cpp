@@ -156,6 +156,7 @@ void kanavi_node::run()
 		// get Point Cloud from Lidar processor
 		if (kanavi_->checkedProcessEnd())
 		{
+			kanavi_->initProcessEnd();
 
 			// datagram Length -> pointcloud
 			length2PointCloud(kanavi_->getDatagram());
