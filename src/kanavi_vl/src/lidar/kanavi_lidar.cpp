@@ -94,17 +94,12 @@ int kanavi_lidar::process(const std::vector<u_char> &data)
 			return -1;
 		}
 		checked_lidar_inputed = true;
-		checked_ch = ch;
+		checked_ch =  static_cast<int>(ch & 0x0F);
 	}
 	
 
 	// Process data based on mode
 	if (mode == KANAVI::COMMON::PROTOCOL_VALUE::COMMAND::MODE::DISTANCE_DATA) {
-		if(ch == checked_ch)
-		{
-			printf("---------KANAVI PROCESS------------\n");
-		}
-		
 		try {
 			// Process the data directly
 			switch (checked_model) {
@@ -169,11 +164,9 @@ void kanavi_lidar::r2(const std::vector<u_char> &input, kanaviDatagram *output)
 		{
 			output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
 			output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
-			output->current_ch = channel;
 		}
 
 		parseLength(input, output, channel); // convert byte to length
-		checked_pares_end = true;
 	}
 }
 
@@ -198,11 +191,9 @@ void kanavi_lidar::r4(const std::vector<u_char> &input, kanaviDatagram *output)
 		// set specification for any channel
 		output->v_resolution = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION;
 		output->h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
-		output->current_ch = channel;
 
 		// process the current channel data
 		parseLength(input, output, channel);
-		checked_pares_end = true;
 	} catch (const std::exception& e) {
 		printf("[LiDAR] Error in r4: %s\n", e.what());
 	}
@@ -236,7 +227,6 @@ void kanavi_lidar::r270(const std::vector<u_char> &input, kanaviDatagram *output
 		
 		// 합쳐진 데이터 처리
 		parseLength(combined_data, output, 0);
-		checked_pares_end = true;
 		
 		// 다음 프레임을 위해 초기화
 		temp_buf_.clear();
@@ -281,6 +271,12 @@ void kanavi_lidar::parseLength(const std::vector<u_char> &input, kanaviDatagram 
 
 		// Update the output buffer
 		output->len_buf[ch] = std::move(len_);
+		output->active_ch[ch] = true;
+
+		if(ch == checked_ch)
+		{
+			checked_pares_end = true;
+		}
 	} catch (const std::exception& e) {
 		printf("[LiDAR] Error in parseLength: %s\n", e.what());
 	}

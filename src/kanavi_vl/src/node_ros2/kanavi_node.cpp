@@ -121,12 +121,21 @@ void kanavi_node::receiveData()
 
 	if(m_process->checkedProcessEnd())
 	{
+		m_process->initProcessEnd();
 
 		length2PointCloud(m_process->getDatagram());
 
 		rotateAxisZ(g_pointcloud, rotate_angle);
 
-		printf("[NODE] PUBLISHING : %dCH\n", m_process->getDatagram().current_ch+1);
+		printf("---------KANAVI PROCESS------------\n");
+		for (size_t i = 0; i < m_process->getDatagram().count_ch; ++i) {
+			if (m_process->getDatagram().active_ch[i]) 
+			{
+				printf("[NODE] PUBLISHING : %dCH\n", i+1);
+			}
+		}
+		m_process->getDatagram().active_ch.assign(m_process->getDatagram().count_ch, false);  
+
 		publish_pointcloud(g_pointcloud);
 
 		g_pointcloud->clear();

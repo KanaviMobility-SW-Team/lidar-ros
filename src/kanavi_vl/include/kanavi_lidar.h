@@ -47,8 +47,9 @@ typedef struct kanavi_datagram{
 	std::vector< std::vector<float> > len_buf;
 	// raw data size
 	size_t input_packet_size;
-	// current channel
-	uint8_t current_ch = 0;
+	// channel output check
+	uint8_t count_ch;
+	std::vector<bool> active_ch;
 
 	kanavi_datagram(){
 	}
@@ -62,6 +63,7 @@ typedef struct kanavi_datagram{
 			h_fov = KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_FoV;
 			h_resolution = KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_RESOLUTION;
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R2::RAW_TOTAL_SIZE;
+			count_ch = KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL);
 			for (auto& buf : len_buf) {
@@ -74,6 +76,7 @@ typedef struct kanavi_datagram{
 			h_fov = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_FoV;
 			h_resolution = KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION;
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R4::RAW_TOTAL_SIZE;
+			count_ch = KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL);
 			for (auto& buf : len_buf) {
@@ -86,6 +89,7 @@ typedef struct kanavi_datagram{
 			h_fov = KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_FoV;
 			h_resolution = KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_RESOLUTION;
 			input_packet_size = KANAVI::COMMON::SPECIFICATION::R270::RAW_TOTAL_SIZE;
+			count_ch = KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_CHANNEL;
 			raw_buf.resize(KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_CHANNEL);
 			len_buf.resize(KANAVI::COMMON::SPECIFICATION::R270::VERTICAL_CHANNEL);
 			for (auto& buf : len_buf) {
@@ -93,6 +97,7 @@ typedef struct kanavi_datagram{
 			}
 			break;
 		}
+		active_ch.assign(count_ch, false);  
 	}
 
 }kanaviDatagram;
