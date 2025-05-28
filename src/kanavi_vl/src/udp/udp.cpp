@@ -25,6 +25,8 @@ KanaviUDP::~KanaviUDP()
 
 int KanaviUDP::init(const std::string& ip, const int& port, std::string multicastIP, bool multiChecked)
 {
+	printf("\n");
+
 	memset(mUdpBuf, 0, MAX_BUF_SIZE);
 
 	mUdpSocket = socket(PF_INET, SOCK_DGRAM, 0);
@@ -37,14 +39,15 @@ int KanaviUDP::init(const std::string& ip, const int& port, std::string multicas
 	memset(&mUdpAddr, 0, sizeof(sockaddr_in));
 	if(!multiChecked) // unicast
 	{
-		printf("[UDP] Set Unicast Mode : %s %d\n", ip.c_str(), port);
+		printf("[UDP] Unicast Mode      : %s:%d\n", ip.c_str(), port);
 		mUdpAddr.sin_family = AF_INET;
 		mUdpAddr.sin_addr.s_addr = inet_addr(ip.c_str());
 		mUdpAddr.sin_port = htons(port);
 	}
 	else		     // multicast
 	{
-		printf("[UDP] Set Multicast Mode : %s %d %s\n", ip.c_str(), port, multicastIP.c_str());
+		printf("[UDP] Local IP          : %s:%d\n", ip.c_str(), port);
+		printf("[UDP] Multicast IP      : %s\n", multicastIP.c_str());
 		mUdpAddr.sin_family = AF_INET;
 		mUdpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 		mUdpAddr.sin_port = htons(port);
@@ -68,11 +71,11 @@ void KanaviUDP::checkUdpBufSize()
 	int sendSize;
 	socklen_t optSize = sizeof(sendSize);
 	getsockopt(mUdpSocket, SOL_SOCKET, SO_SNDBUF, &sendSize, &optSize);
-	printf("*[UDP] set send buffer size is %d\n", sendSize);
+	printf("[UDP] Send Buffer Size  : %d\n", sendSize);
 
 	int recvSize;
 	getsockopt(mUdpSocket, SOL_SOCKET, SO_RCVBUF, &recvSize, &optSize);
-	printf("*[UDP] set recv buffer size is %d\n", recvSize);
+	printf("[UDP] Recv Buffer Size  : %d\n", recvSize);
 
 	//reset udp buffer size
 	int setSize = 0;

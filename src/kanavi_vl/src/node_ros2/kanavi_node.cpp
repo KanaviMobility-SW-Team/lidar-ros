@@ -139,16 +139,18 @@ void KanaviNode::endProcess()
  */
 void KanaviNode::setLogParameters()
 {
-	printf("---------KANAVI ROS2------------\n");
-	printf("Local IP :\t%s\n", mLocalIP.c_str());
-	printf("Port Num. :\t%d\n", mPort);
+	printf("--------------------------------------\n");
+	printf("           KANAVI ROS2\n");
+	printf("--------------------------------------\n");
+	printf("Local IP         : %s\n", mLocalIP.c_str());
+	printf("Port Number      : %d\n", mPort);
 	if (mbCheckedMulticast)
 	{
-		printf("Multicast IP :\t%s\n", mMulticastIP.c_str());
+		printf("Multicast IP     : %s\n", mMulticastIP.c_str());
 	}
-	printf("Fixed Frame Name :\t%s\n", mFixedName.c_str());
-	printf("Topic Name :\t%s\n", mTopicName.c_str());
-	printf("--------------------------------\n");
+	printf("Fixed Frame Name : %s\n", mFixedName.c_str());
+	printf("Topic Name       : %s\n", mTopicName.c_str());
+	printf("--------------------------------------\n");
 }
 
 void KanaviNode::CalculateAngular(int model)

@@ -39,20 +39,20 @@ int KanaviLidar::classification(const std::vector<uint8_t>& data)
 		switch (productline)
 		{
 		case kanavi::common::protocol::eModel::R2:
-            printf("********R2**********\n");
+            printf("[LIDAR] Model      : R2\n");
 			return kanavi::common::protocol::eModel::R2;
 		case kanavi::common::protocol::eModel::R4:
-            printf("********R4**********\n");
+            printf("[LIDAR] Model      : R4\n");
 			return kanavi::common::protocol::eModel::R4;
 		case kanavi::common::protocol::eModel::R270:
-            printf("********R270**********\n");
+            printf("[LIDAR] Model      : R270\n");
 			return kanavi::common::protocol::eModel::R270;
 		default:
 			return -1;
 		}
 	}
 
-	return -1;
+	return -1;  // Invalid header - classification failed
 }
 
 int KanaviLidar::Process(const std::vector<uint8_t>& data)
@@ -92,6 +92,8 @@ int KanaviLidar::Process(const std::vector<uint8_t>& data)
 			return -1;
 		}
 		
+        printf("[LIDAR] Publishing : Started\n\n");
+
 		mbCheckedLidarInputed = true;
 		mCheckedChannel =  static_cast<int>(ch & 0x0F);
 	}

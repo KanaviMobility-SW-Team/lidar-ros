@@ -20,8 +20,6 @@ KanaviNode::KanaviNode(const std::string& node, int& argc, char** argv)
 	mbCheckedMulticast = argvs.checkedMulticast;
 	mbCheckedDebug = argvs.checkedDebug;
 
-	setLogParameters();
-
 	// init UDP network -- multicast Mode
 	// SETCTION
 	// NEED Uncast mode & Multicast Mode
@@ -34,6 +32,8 @@ KanaviNode::KanaviNode(const std::string& node, int& argc, char** argv)
 	{
 		mPtrUDP = std::make_unique<KanaviUDP>(mLocalIP, mPort, mMulticastIP);
 	}
+
+	setLogParameters();
 
 	// check model using node name
 	int model = -1;
@@ -71,7 +71,10 @@ KanaviNode::KanaviNode(const std::string& node, int& argc, char** argv)
 
 KanaviNode::~KanaviNode()
 {
-	mPtrUDP->Disconnect();
+	if (mPtrUDP) 
+	{ 
+		mPtrUDP->Disconnect();
+	}
 }
 
 std::vector<uint8_t> KanaviNode::receiveDatagram()
@@ -90,16 +93,18 @@ void KanaviNode::endProcess()
 
 void KanaviNode::setLogParameters()
 {
-	printf("---------KANAVI ROS1------------\n");
-	printf("Local IP :\t%s\n", mLocalIP.c_str());
-	printf("Port Num. :\t%d\n", mPort);
+	printf("--------------------------------------\n");
+	printf("           KANAVI ROS1\n");
+	printf("--------------------------------------\n");
+	printf("Local IP         : %s\n", mLocalIP.c_str());
+	printf("Port Number      : %d\n", mPort);
 	if (mbCheckedMulticast)
 	{
-		printf("Multicast IP :\t%s\n", mMulticastIP.c_str());
+		printf("Multicast IP     : %s\n", mMulticastIP.c_str());
 	}
-	printf("Fixed Frame Name :\t%s\n", mFixedName.c_str());
-	printf("Topic Name :\t%s\n", mTopicName.c_str());
-	printf("--------------------------------\n");
+	printf("Fixed Frame Name : %s\n", mFixedName.c_str());
+	printf("Topic Name       : %s\n", mTopicName.c_str());
+	printf("--------------------------------------\n");
 }
 
 void KanaviNode::Run()
