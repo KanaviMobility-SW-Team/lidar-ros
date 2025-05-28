@@ -18,7 +18,8 @@ KanaviNode::KanaviNode(const std::string& node, int& argc, char** argv)
 	mTopicName = argvs.topicName;
 	mFixedName = argvs.fixedName;
 	mbCheckedMulticast = argvs.checkedMulticast;
-	mbCheckedDebug = argvs.checkedDebug;
+	mbCheckedDebug = argvs.checkedDebug || argvs.checkedTimestamp;
+	mbCheckedTimestamp = argvs.checkedTimestamp;
 
 	// init UDP network -- multicast Mode
 	// SETCTION
@@ -144,10 +145,18 @@ void KanaviNode::Run()
 			// rotate Center
 			rotateAxisZ(mPtrPointCloud, mRotateAngle);
 
-			if(mbCheckedDebug)
-			{
-			// streaming..
-				printf("---------KANAVI PROCESS------------\n");
+			if(mbCheckedDebug) // streaming..
+			{ 
+				if(mbCheckedTimestamp)
+				{
+					time_t rawtime = time(nullptr); 
+					struct tm* timeinfo = localtime(&rawtime);
+					printf("[%02d:%02d:%02d] -- KANAVI PROCESS --\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+				}
+				else
+				{
+					printf("----- KANAVI PROCESS -----\n");
+				}
 				
 				for (size_t i = 0; i < mPtrProcess->GetDatagram().GetChannelCount(); ++i) 
 				{

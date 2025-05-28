@@ -160,6 +160,7 @@ private:
 	// flags
 	bool mbCheckedMulticast;
 	bool mbCheckedDebug;
+	bool mbCheckedTimestamp;
 
 	// UDP network
 	std::unique_ptr<KanaviUDP> mPtrUDP;

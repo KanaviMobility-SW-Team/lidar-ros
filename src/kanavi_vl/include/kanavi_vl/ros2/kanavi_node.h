@@ -158,7 +158,8 @@ private:
 	// flags
 	bool mbCheckedMulticast;
 	bool mbCheckedDebug;
-	
+	bool mbCheckedTimestamp;
+
 	// rotate angle
 	float mRotateAngle;
 

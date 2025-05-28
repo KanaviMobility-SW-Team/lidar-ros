@@ -18,7 +18,9 @@ KanaviNode::KanaviNode(const std::string &node, int &argc, char **argv) : rclcpp
 	mTopicName = argvs.topicName;
 	mFixedName = argvs.fixedName;
 	mbCheckedMulticast = argvs.checkedMulticast;
-	mbCheckedDebug = argvs.checkedDebug;
+	mbCheckedDebug = argvs.checkedDebug || argvs.checkedTimestamp;
+	mbCheckedTimestamp = argvs.checkedTimestamp;
+
 	if(mbCheckedMulticast)
 	{
 		mMulticastIP = argvs.multicastIP;
@@ -106,7 +108,17 @@ void KanaviNode::receiveData()
 
 		if(mbCheckedDebug)
 		{
-			printf("---------KANAVI PROCESS------------\n");
+			if(mbCheckedTimestamp)
+			{
+				time_t rawtime = time(nullptr); 
+				struct tm* timeinfo = localtime(&rawtime);
+				printf("[%02d:%02d:%02d] -- KANAVI PROCESS --\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+			}
+			else
+			{
+				printf("----- KANAVI PROCESS -----\n");
+			}
+			
 			for (size_t i = 0; i < mPtrProcess->GetDatagram().GetChannelCount(); ++i) 
 			{
 				if (mPtrProcess->GetDatagram().GetActiveChannels()[i]) 

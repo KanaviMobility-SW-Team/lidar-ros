@@ -38,6 +38,7 @@ struct ArgvContainer
 	int port = kanavi::common::DEFAULT_PORT_NUM;					// port number
 	bool checkedMulticast = false;		// checked multicast
 	bool checkedDebug = false;			// checked debug log output
+	bool checkedTimestamp = false;		// checked timestamp
 };
 
 
@@ -93,7 +94,7 @@ inline void ArgvParser::parseArgv(const int& argc, char** argv)
 
 	for(int i=0; i<argc; i++)
 	{
-		if(!strcmp(argv[i], kanavi::ros::PARAMETER_IP))		// check ARGV - IP & port num.
+		if(!strcmp(argv[i], kanavi::ros::PARAMETER_IP))		        // check ARGV - IP & port num.
 		{
 			mArgvResult.localIP = argv[i+1];
 			mArgvResult.port = atoi(argv[i+2]);
@@ -103,17 +104,21 @@ inline void ArgvParser::parseArgv(const int& argc, char** argv)
 			mArgvResult.checkedMulticast = true;
 			mArgvResult.multicastIP = argv[i+1];
 		}
-		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_FIXED))							// check ARGV - ROS Fixed name
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_FIXED))		// check ARGV - ROS Fixed name
 		{
 			mArgvResult.fixedName = argv[i+1];
 		}
-		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_TOPIC))							// check ARGV - ROS topic name
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_TOPIC))		// check ARGV - ROS topic name
 		{
 			mArgvResult.topicName = argv[i+1];
 		}
-		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_DEBUG))							// check ARGV - ROS topic name
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_DEBUG))		// check ARGV - debug log output
 		{
 			mArgvResult.checkedDebug = true;
+		}
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_TIMESTAMP))	// check ARGV - timestamp for debug log
+		{
+			mArgvResult.checkedTimestamp = true;
 		}
 	}
 

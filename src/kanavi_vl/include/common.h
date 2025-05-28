@@ -17,11 +17,13 @@ namespace kanavi
 	namespace ros
 	{
 		constexpr const char* PARAMETER_DEBUG               = "-d";
-		constexpr const char* PARAMETER_FIXED               = "-fix";
 		constexpr const char* PARAMETER_HELP                = "-h";
 		constexpr const char* PARAMETER_IP                  = "-i";
 		constexpr const char* PARAMETER_MULTICAST           = "-m";
 		constexpr const char* PARAMETER_PORT                = "-p";
+		constexpr const char* PARAMETER_TIMESTAMP           = "-t";
+
+		constexpr const char* PARAMETER_FIXED               = "-fix";
 		constexpr const char* PARAMETER_TOPIC               = "-topic";
 	}
 
