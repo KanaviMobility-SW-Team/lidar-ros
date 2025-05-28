@@ -31,12 +31,13 @@
  */
 struct ArgvContainer
 {
-	std::string local_ip = kanavi::common::DEFAULT_LOCAL_IP;		// local IP address
-	int port = kanavi::common::DEFAULT_PORT_NUM;					// port number
-	bool checked_multicast = false;		// checked multicast
-	std::string multicast_ip = kanavi::common::DEFAULT_MULTICAST_IP;	// multicast IP address
+	std::string localIP = kanavi::common::DEFAULT_LOCAL_IP;		// local IP address
+	std::string multicastIP = kanavi::common::DEFAULT_MULTICAST_IP;	// multicast IP address
 	std::string topicName = kanavi::common::ROS_TOPIC_NAME;		// ROS Node topic Name
 	std::string fixedName = kanavi::common::ROS_FIXED_NAME;		// ROS Node Fixed Name
+	int port = kanavi::common::DEFAULT_PORT_NUM;					// port number
+	bool checkedMulticast = false;		// checked multicast
+	bool checkedDebug = false;			// checked debug log output
 };
 
 
@@ -87,20 +88,20 @@ inline void ArgvParser::parseArgv(const int& argc, char** argv)
 	if(0 == argc)
 	{
 		printf("Active Defalut Mode");
-		mArgvResult.checked_multicast = true;
+		mArgvResult.checkedMulticast = true;
 	}
 
 	for(int i=0; i<argc; i++)
 	{
 		if(!strcmp(argv[i], kanavi::ros::PARAMETER_IP))		// check ARGV - IP & port num.
 		{
-			mArgvResult.local_ip = argv[i+1];
+			mArgvResult.localIP = argv[i+1];
 			mArgvResult.port = atoi(argv[i+2]);
 		}
 		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_MULTICAST))	// check ARGV - udp multicast ip
 		{
-			mArgvResult.checked_multicast = true;
-			mArgvResult.multicast_ip = argv[i+1];
+			mArgvResult.checkedMulticast = true;
+			mArgvResult.multicastIP = argv[i+1];
 		}
 		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_FIXED))							// check ARGV - ROS Fixed name
 		{
@@ -109,6 +110,10 @@ inline void ArgvParser::parseArgv(const int& argc, char** argv)
 		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_TOPIC))							// check ARGV - ROS topic name
 		{
 			mArgvResult.topicName = argv[i+1];
+		}
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_DEBUG))							// check ARGV - ROS topic name
+		{
+			mArgvResult.checkedDebug = true;
 		}
 	}
 

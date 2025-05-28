@@ -12,16 +12,16 @@ KanaviNode::KanaviNode(const std::string &node, int &argc, char **argv) : rclcpp
 	ArgvContainer argvs = mArgv->GetParameters();
 
 	// set PARAMETERS
-	mLocalIP = argvs.local_ip;
+	mLocalIP = argvs.localIP;
 	mPort = argvs.port;
 	
 	mTopicName = argvs.topicName;
 	mFixedName = argvs.fixedName;
-	mbCheckedMulticast = argvs.checked_multicast;
-
+	mbCheckedMulticast = argvs.checkedMulticast;
+	mbCheckedDebug = argvs.checkedDebug;
 	if(mbCheckedMulticast)
 	{
-		mMulticastIP = argvs.multicast_ip;
+		mMulticastIP = argvs.multicastIP;
 		// init UDP network
 		mPtrUDP = std::make_unique<KanaviUDP>(mLocalIP, mPort, mMulticastIP);
 	}
@@ -104,12 +104,15 @@ void KanaviNode::receiveData()
 
 		rotateAxisZ(mPtrPointCloud, mRotateAngle);
 
-		printf("---------KANAVI PROCESS------------\n");
-		for (size_t i = 0; i < mPtrProcess->GetDatagram().GetChannelCount(); ++i) 
+		if(mbCheckedDebug)
 		{
-			if (mPtrProcess->GetDatagram().GetActiveChannels()[i]) 
+			printf("---------KANAVI PROCESS------------\n");
+			for (size_t i = 0; i < mPtrProcess->GetDatagram().GetChannelCount(); ++i) 
 			{
-				printf("[NODE] PUBLISHING : %zuCH\n", i+1);
+				if (mPtrProcess->GetDatagram().GetActiveChannels()[i]) 
+				{
+					printf("[NODE] PUBLISHING : %zuCH\n", i+1);
+				}
 			}
 		}
 		mPtrProcess->GetDatagram().GetActiveChannels().assign(mPtrProcess->GetDatagram().GetChannelCount(), false);  
