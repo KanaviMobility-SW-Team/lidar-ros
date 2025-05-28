@@ -1,3 +1,4 @@
+#pragma once
 #ifndef __UDP_H__
 #define __UDP_H__
 
@@ -19,21 +20,21 @@
  * 
  */
 
+#include <algorithm>
+#include <arpa/inet.h>
+#include <cassert>
+#include <cstdint> 
 #include <iostream>
+#include <iterator>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <string>
 #include <string.h>
-#include <stdio.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>     // close
 #include <vector>
 
-#include <cassert>
-#include <algorithm>
-#include <iterator>
-
-#define MAX_BUF_SIZE 65000
+#define MAX_BUF_SIZE (65000)
 
 /**
  * @class kanavi_udp
@@ -42,8 +43,48 @@
  * This class handles socket setup, data transmission, and reception over UDP.
  * It supports both unicast and multicast communication modes.
  */
-class kanavi_udp
+class KanaviUDP
 {
+public:
+/**
+ * @brief Constructor for initializing UDP communication with local and multicast IP.
+ * 
+ * @param localIP Local IP address to bind.
+ * @param port UDP port number.
+ * @param multicastIP Multicast IP address to join.
+ */
+	KanaviUDP(const std::string& localIP, const int& port, const std::string& multicastIP);
+	KanaviUDP(const std::string& localIP, const int& port);
+	~KanaviUDP();
+
+/**
+ * @brief Receives a UDP packet and returns the raw data.
+ * 
+ * @return Vector of received bytes.
+ */
+	std::vector<uint8_t> GetData();
+
+/**
+ * @brief Sends a UDP packet to the configured address (Not Used).
+ * 
+ * @param data Byte buffer to send.
+ */
+	void SendData(std::vector<uint8_t> data);
+
+/**
+ * @brief Establishes the UDP socket connection.
+ * 
+ * @return 0 if successful, or error code otherwise.
+ */
+	int Connect();
+	
+/**
+ * @brief Closes the UDP socket connection.
+ * 
+ * @return 0 if successful, or error code otherwise.
+ */
+	int Disconnect();
+
 private:
 	/* data */
 
@@ -51,69 +92,31 @@ private:
 /**
  * @brief Initializes the UDP socket with given IP, port, and optional multicast settings.
  * 
- * @param ip_ Local IP address to bind the socket.
- * @param port_ Port number for UDP communication.
- * @param multicast_ip_ (Optional) Multicast group IP address. Default is "224.0.0.5".
- * @param multi_checked_ Whether to enable multicast reception.
+ * @param ip Local IP address to bind the socket.
+ * @param port Port number for UDP communication.
+ * @param multicastIP (Optional) Multicast group IP address. Default is "224.0.0.5".
+ * @param multiChecked Whether to enable multicast reception.
  * @return 0 if successful, or error code otherwise.
  */
-	int init(const std::string &ip_, const int &port_, std::string multicast_ip_ = "224.0.0.5", bool multi_checked_ = false);
+	int init(const std::string& ip, const int& port, std::string multicastIP = "224.0.0.5", bool multiChecked = false);
 
 /**
  * @brief Checks and logs the current receive buffer size for the UDP socket.
  */
-	void check_udp_buf_size();
+	void checkUdpBufSize();
 
 	//!SECTION --------
 
 	//SECTION -- VARS.
-	struct sockaddr_in g_udpAddr;
-	struct sockaddr_in g_senderAddr;
-	int g_udpSocket;
+	struct sockaddr_in mUdpAddr;
+	struct sockaddr_in mSenderAddr;
+	int mUdpSocket;
 
-	struct ip_mreq multi_Addr;
+	struct ip_mreq mMultiAddr;
 
-	u_char g_udp_buf[MAX_BUF_SIZE];
+	uint8_t mUdpBuf[MAX_BUF_SIZE];
 
 	//!SECTION --------
-public:
-/**
- * @brief Constructor for initializing UDP communication with local and multicast IP.
- * 
- * @param local_ip_ Local IP address to bind.
- * @param port_ UDP port number.
- * @param multicast_ip_ Multicast IP address to join.
- */
-	kanavi_udp(const std::string &local_ip_, const int &port_, const std::string &multicast_ip_);
-	kanavi_udp(const std::string &local_ip_, const int &port_);
-	~kanavi_udp();
-
-/**
- * @brief Receives a UDP packet and returns the raw data.
- * 
- * @return Vector of received bytes.
- */
-	std::vector<u_char> getData();
-
-/**
- * @brief Sends a UDP packet to the configured address (Not Used).
- * 
- * @param data_ Byte buffer to send.
- */
-	void sendData(std::vector<u_char> data_);
-
-/**
- * @brief Establishes the UDP socket connection.
- * 
- * @return 0 if successful, or error code otherwise.
- */
-	int connect();
-	
-/**
- * @brief Closes the UDP socket connection.
- * 
- * @return 0 if successful, or error code otherwise.
- */
-	int disconnect();
 };
+
 #endif // __UDP_H__

@@ -1,137 +1,137 @@
 #include "udp.h"
 
-kanavi_udp::kanavi_udp(const std::string &local_ip_, const int &port_, const std::string &multicast_ip_)
+KanaviUDP::KanaviUDP(const std::string& localIP, const int& port, const std::string& multicastIP)
 {
 	// init Unicast
-	if(init(local_ip_, port_, multicast_ip_, true) == -1)
+	if (-1 == init(localIP, port, multicastIP, true))
 	{
-		exit(1);
+		throw std::runtime_error("Failed to initialize UDP with multicast");
 	}
 }
 
-kanavi_udp::kanavi_udp(const std::string &local_ip_, const int &port_)
+KanaviUDP::KanaviUDP(const std::string& localIP, const int& port)
 {
 	// init Unicast
-	if(init(local_ip_, port_) == -1)
+	if (-1 == init(localIP, port))
 	{
-		exit(1);
+		throw std::runtime_error("Failed to initialize UDP");
 	}
 }
 
 
-kanavi_udp::~kanavi_udp()
+KanaviUDP::~KanaviUDP()
 {
 }
 
-int kanavi_udp::init(const std::string &ip_, const int &port_, std::string multicast_ip_, bool multi_checked_)
+int KanaviUDP::init(const std::string& ip, const int& port, std::string multicastIP, bool multiChecked)
 {
-	memset(g_udp_buf, 0, MAX_BUF_SIZE);
+	memset(mUdpBuf, 0, MAX_BUF_SIZE);
 
-	g_udpSocket = socket(PF_INET, SOCK_DGRAM, 0);
-	if(g_udpSocket == -1)
+	mUdpSocket = socket(PF_INET, SOCK_DGRAM, 0);
+	if (-1 == mUdpSocket)
 	{
 		perror("UDP Socket Failed");
 		return -1;
 	}
 
-	memset(&g_udpAddr, 0, sizeof(sockaddr_in));
-	if(!multi_checked_) // unicast
+	memset(&mUdpAddr, 0, sizeof(sockaddr_in));
+	if(!multiChecked) // unicast
 	{
-		printf("[UDP] Set Unicast Mode : %s %d\n", ip_.c_str(), port_);
-		g_udpAddr.sin_family = AF_INET;
-		g_udpAddr.sin_addr.s_addr = inet_addr(ip_.c_str());
-		g_udpAddr.sin_port = htons(port_);
+		printf("[UDP] Set Unicast Mode : %s %d\n", ip.c_str(), port);
+		mUdpAddr.sin_family = AF_INET;
+		mUdpAddr.sin_addr.s_addr = inet_addr(ip.c_str());
+		mUdpAddr.sin_port = htons(port);
 	}
-	else				// multicast
+	else		     // multicast
 	{
-		printf("[UDP] Set Multicast Mode : %s %d %s\n", ip_.c_str(), port_, multicast_ip_.c_str());
-		g_udpAddr.sin_family = AF_INET;
-		g_udpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		g_udpAddr.sin_port = htons(port_);
-		multi_Addr.imr_multiaddr.s_addr = inet_addr(multicast_ip_.c_str());
-		multi_Addr.imr_interface.s_addr = inet_addr(ip_.c_str());
-		setsockopt(g_udpSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&multi_Addr, sizeof(multi_Addr));
+		printf("[UDP] Set Multicast Mode : %s %d %s\n", ip.c_str(), port, multicastIP.c_str());
+		mUdpAddr.sin_family = AF_INET;
+		mUdpAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+		mUdpAddr.sin_port = htons(port);
+		mMultiAddr.imr_multiaddr.s_addr = inet_addr(multicastIP.c_str());
+		mMultiAddr.imr_interface.s_addr = inet_addr(ip.c_str());
+		setsockopt(mUdpSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void*)&mMultiAddr, sizeof(mMultiAddr));
 	}
 
 	//time out
 	struct timeval optVal = {1,500};
 	int optlen = sizeof(optVal);
-	setsockopt(g_udpSocket, SOL_SOCKET, SO_RCVTIMEO, &optVal, optlen);
+	setsockopt(mUdpSocket, SOL_SOCKET, SO_RCVTIMEO, &optVal, optlen);
 
-	check_udp_buf_size();
+	checkUdpBufSize();
 
 	return 0;
 }
 
-void kanavi_udp::check_udp_buf_size()
+void KanaviUDP::checkUdpBufSize()
 {
-	int send_size;
-	socklen_t opt_size = sizeof(send_size);
-	getsockopt(g_udpSocket, SOL_SOCKET, SO_SNDBUF, &send_size, &opt_size);
-	printf("*[UDP] set send buffer size is %d\n", send_size);
+	int sendSize;
+	socklen_t optSize = sizeof(sendSize);
+	getsockopt(mUdpSocket, SOL_SOCKET, SO_SNDBUF, &sendSize, &optSize);
+	printf("*[UDP] set send buffer size is %d\n", sendSize);
 
-	int recv_size;
-	socklen_t opt_size2 = sizeof(recv_size);
-	getsockopt(g_udpSocket, SOL_SOCKET, SO_RCVBUF, &recv_size, &opt_size2);
-	printf("*[UDP] set recv buffer size is %d\n", recv_size);
+	int recvSize;
+	getsockopt(mUdpSocket, SOL_SOCKET, SO_RCVBUF, &recvSize, &optSize);
+	printf("*[UDP] set recv buffer size is %d\n", recvSize);
 
 	//reset udp buffer size
 	int setSize = 0;
 
-	if(send_size < MAX_BUF_SIZE || recv_size < MAX_BUF_SIZE)
+	if (sendSize < MAX_BUF_SIZE || recvSize < MAX_BUF_SIZE)
 	{
-		if(send_size < recv_size)
+		if(sendSize < recvSize)
 		{
-			setSize = recv_size;
+			setSize = recvSize;
 		}
 		else
-			setSize = send_size;
-
-		if(send_size < MAX_BUF_SIZE)
 		{
-			setsockopt(g_udpSocket, SOL_SOCKET, SO_SNDBUF, &setSize, sizeof(setSize));			
+			setSize = sendSize;
 		}
-		if(recv_size < MAX_BUF_SIZE)
+
+		if(sendSize < MAX_BUF_SIZE)
 		{
-			setsockopt(g_udpSocket, SOL_SOCKET, SO_RCVBUF, &setSize, sizeof(setSize));
+			setsockopt(mUdpSocket, SOL_SOCKET, SO_SNDBUF, &setSize, sizeof(setSize));			
+		}
+		if(recvSize < MAX_BUF_SIZE)
+		{
+			setsockopt(mUdpSocket, SOL_SOCKET, SO_RCVBUF, &setSize, sizeof(setSize));
 		}
 	}
 }
 
-std::vector<u_char> kanavi_udp::getData()
+std::vector<uint8_t> KanaviUDP::GetData()
 {
-	memset(&g_senderAddr, 0, sizeof(struct sockaddr_in));
-	socklen_t addr_len = sizeof(g_senderAddr);
+	memset(&mSenderAddr, 0, sizeof(struct sockaddr_in));
+	socklen_t addrLen = sizeof(mSenderAddr);
 
-	std::vector<u_char> output;
+	std::vector<uint8_t> output;
 
-	int size = recvfrom(g_udpSocket, g_udp_buf, MAX_BUF_SIZE, 0, (struct sockaddr*)&g_senderAddr, &addr_len);
+	int size = recvfrom(mUdpSocket, mUdpBuf, MAX_BUF_SIZE, 0, (struct sockaddr*)&mSenderAddr, &addrLen);
 
-	char ip_str[INET_ADDRSTRLEN];
+	char ipStr[INET_ADDRSTRLEN];
     // IP 주소 변환 (network byte order → string)
-    inet_ntop(AF_INET, &(g_senderAddr.sin_addr), ip_str, sizeof(ip_str));
+    inet_ntop(AF_INET, &(mSenderAddr.sin_addr), ipStr, sizeof(ipStr));
 
 	if(size > 0)
 	{
 		output.resize(size);
-
-		std::copy(g_udp_buf, g_udp_buf + size, output.begin());
+		std::copy(mUdpBuf, mUdpBuf + size, output.begin());
 	}
 
 	return output;
 }
 
-void kanavi_udp::sendData(std::vector<u_char> data_)
+void KanaviUDP::SendData(std::vector<uint8_t> data)
 {
 	printf("NOT ACTIVATED...\n");
 }
 
-int kanavi_udp::connect()
+int KanaviUDP::Connect()
 {
-	return bind(g_udpSocket, (struct sockaddr*)&g_udpAddr, sizeof(g_udpAddr));
+	return bind(mUdpSocket, (struct sockaddr*)&mUdpAddr, sizeof(mUdpAddr));
 }
 
-int kanavi_udp::disconnect()
+int KanaviUDP::Disconnect()
 {
-	return close(g_udpSocket);
+	return close(mUdpSocket);
 }

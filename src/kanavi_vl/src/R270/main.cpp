@@ -1,16 +1,21 @@
-#include <r270_spec.h>
+#include "helper.h"
 
-#if defined(ROS1)
+#if defined (ROS1)
 #include <ros1/kanavi_node.h>
 
 // Entry point for this module
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
+    if (checkHelpOptionROS1(argc, argv)) 
+	{
+        return 0;
+    }
+
 	ros::init(argc, argv, "r270");
 
-	kanavi_node node("r270", argc, argv);
+	KanaviNode node("r270", argc, argv);
 
-	node.run();
+	node.Run();
 
 	return 0;
 }
@@ -19,13 +24,18 @@ int main(int argc, char **argv)
 
 #include <ros2/kanavi_node.h>
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
+    if (checkHelpOptionROS2(argc, argv)) 
+	{
+        return 0;
+    }
+
 	// init ROS2
 	rclcpp::init(argc, argv);
 
 	// generate node
-	auto node = std::make_shared<kanavi_node>("r270", argc, argv);
+	auto node = std::make_shared<KanaviNode>("r270", argc, argv);
 
 	// start node
 	rclcpp::spin(node);

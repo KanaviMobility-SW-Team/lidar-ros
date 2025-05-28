@@ -1,358 +1,340 @@
 #include "ros1/kanavi_node.h"
+using namespace std::chrono_literals;  // "10ms"와 같은 단위 사용을 위해 필요
 
-kanavi_node::kanavi_node(const std::string &node_, int &argc_, char **argv_)
+KanaviNode::KanaviNode(const std::string& node, int& argc, char** argv)
 {
-	checked_multicast_ = false;
-	checked_help_ = false;
+	mbCheckedMulticast = false;
 
-	// check help
-	for (int i = 0; i < argc_; i++)
+	// parse PARAMETERS
+	mArgv = std::make_unique<ArgvParser>(argc, argv);
+
+	// get PARAMETERS
+	ArgvContainer argvs = mArgv->GetParameters();
+
+	// set PARAMETERS
+	mLocalIP = argvs.local_ip;
+	mPort = argvs.port;
+	mMulticastIP = argvs.multicast_ip;
+	mTopicName = argvs.topicName;
+	mFixedName = argvs.fixedName;
+	mbCheckedMulticast = argvs.checked_multicast;
+
+	setLogParameters();
+
+	// init UDP network -- multicast Mode
+	// SETCTION
+	// NEED Uncast mode & Multicast Mode
+	//! SETCION
+	if(!mbCheckedMulticast)
 	{
-		if (!strcmp(argv_[i], "-h")) // output help command
-		{
-			helpAlarm();
-			checked_help_ = true;
-
-			timer_ = nh_.createTimer(ros::Duration(1), std::bind(&kanavi_node::endProcess, this));
-			// break;
-			exit(1);
-		}
+		mPtrUDP = std::make_unique<KanaviUDP>(mLocalIP, mPort);
+	}
+	else
+	{
+		mPtrUDP = std::make_unique<KanaviUDP>(mLocalIP, mPort, mMulticastIP);
 	}
 
-	if (!checked_help_)
+	// check model using node name
+	int model = -1;
+	if (!strcmp("r270", node.c_str()))
 	{
-		// parse PARAMETERS
-		m_argv = std::make_unique<argv_parser>(argc_, argv_);
-
-		// get PARAMETERS
-		argvContainer argvs = m_argv->getParameters();
-
-		// set PARAMETERS
-		local_ip_ = argvs.local_ip;
-		port_ = argvs.port;
-		multicast_ip_ = argvs.multicast_ip;
-		topicName_ = argvs.topicName;
-		fixedName_ = argvs.fixedName;
-		checked_multicast_ = argvs.checked_multicast;
-
-		log_set_parameters();
-
-		// init UDP network -- multicast Mode
-		// SETCTION
-		// NEED Uncast mode & Multicast Mode
-		//! SETCION
-		if(!checked_multicast_)
-		{
-			m_udp = std::make_unique<kanavi_udp>(local_ip_, port_);
-		}
-		else
-		{
-			m_udp = std::make_unique<kanavi_udp>(local_ip_, port_, multicast_ip_);
-		}
-
-		// check model using node name
-		int model_ = -1;
-		if (!strcmp("r270", node_.c_str()))
-		{
-			model_ = KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270;
-			rotate_angle = KANAVI::COMMON::SPECIFICATION::R270::BASE_ZERO_ANGLE;
-		}
-		else if (!strcmp("r4", node_.c_str()))
-		{
-			model_ = KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4;
-			rotate_angle = KANAVI::COMMON::SPECIFICATION::R4::BASE_ZERO_ANGLE;
-		}
-		else if (!strcmp("r2", node_.c_str()))
-		{
-			model_ = KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R2;
-			rotate_angle = KANAVI::COMMON::SPECIFICATION::R2::BASE_ZERO_ANGLE;
-		}
-
-		if (model_ < 0)
-		{
-			return;
-		}
-
-		calculateAngular(model_);
-
-		// init LiDAR processor
-		kanavi_ = std::make_unique<kanavi_lidar>(model_);
-
-		// init
-		// auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(10));
-		publisher_ = nh_.advertise<sensor_msgs::PointCloud2>(topicName_, 1);
-
-		// init. point cloud
-		g_pointcloud.reset(new PointCloudT);
+		model = kanavi::common::protocol::eModel::R270;
 	}
+	else if (!strcmp("r4", node.c_str()))
+	{
+		model = kanavi::common::protocol::eModel::R4;
+	}
+	else if (!strcmp("r2", node.c_str()))
+	{
+		model = kanavi::common::protocol::eModel::R2;
+	}
+	mRotateAngle = kanavi::common::specification::BASE_ZERO_ANGLE;
+
+	if (model < 0)
+	{
+		return;
+	}
+
+	CalculateAngular(model);
+
+	// init LiDAR processor
+	mPtrProcess = std::make_unique<KanaviLidar>(model);
+
+	// init
+	// auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(10));
+	mPtrPublisher = mNodeHnadle.advertise<sensor_msgs::PointCloud2>(mTopicName, 1);
+
+	// init. point cloud
+	mPtrPointCloud.reset(new PointCloudT);
 }
 
-kanavi_node::~kanavi_node()
+KanaviNode::~KanaviNode()
 {
-	m_udp->disconnect();
+	mPtrUDP->Disconnect();
 }
 
-void kanavi_node::helpAlarm()
-{
-	printf("[HELP]============ \n"
-		   "%s : set Network Infromation\n"
-		   "\t ex) %s [ip] [port] \n"
-		   "%s : set multicast & IP\n"
-		   "\t ex) %s [ip]\n"
-		   "%s : set fixed frame Name for rviz\n"
-		   "%s : set topic name for rviz\n",
-		   KANAVI::ROS::PARAMETER_IP.c_str(), KANAVI::ROS::PARAMETER_IP.c_str(), KANAVI::ROS::PARAMETER_Multicast.c_str(), KANAVI::ROS::PARAMETER_Multicast.c_str(), KANAVI::ROS::PARAMETER_FIXED.c_str(), KANAVI::ROS::PARAMETER_TOPIC.c_str());
-}
-
-std::vector<u_char> kanavi_node::receiveDatagram()
+std::vector<uint8_t> KanaviNode::receiveDatagram()
 {
 	// recv data using udp
-	return m_udp->getData();
+	return mPtrUDP->GetData();
 }
 
-void kanavi_node::endProcess()
+void KanaviNode::endProcess()
 {
 	// Clean up resources safely
-	this->timer_.stop();
+	this->mPtrTimer.stop();
 	// Signal to stop spinning
 	ros::shutdown();
 }
 
-void kanavi_node::log_set_parameters()
+void KanaviNode::setLogParameters()
 {
 	printf("---------KANAVI ROS1------------\n");
-	printf("Local IP :\t%s\n", local_ip_.c_str());
-	printf("Port Num. :\t%d\n", port_);
-	if (checked_multicast_)
+	printf("Local IP :\t%s\n", mLocalIP.c_str());
+	printf("Port Num. :\t%d\n", mPort);
+	if (mbCheckedMulticast)
 	{
-		printf("Multicast IP :\t%s\n", multicast_ip_.c_str());
+		printf("Multicast IP :\t%s\n", mMulticastIP.c_str());
 	}
-	printf("Fixed Frame Name :\t%s\n", fixedName_.c_str());
-	printf("Topic Name :\t%s\n", topicName_.c_str());
+	printf("Fixed Frame Name :\t%s\n", mFixedName.c_str());
+	printf("Topic Name :\t%s\n", mTopicName.c_str());
 	printf("--------------------------------\n");
 }
 
-void kanavi_node::run()
+void KanaviNode::Run()
 {
 	ros::Rate rate(30);
+	
 	// SECTION - Init LiDAR
-	int udp_return = m_udp->connect();
+	int udp_return = mPtrUDP->Connect();
+	if (udp_return < 0) {
+		printf("[NODE] Failed to connect UDP socket\n");
+		ros::shutdown();
+		return;
+	}
 
-	timer_.start();
+	mPtrTimer.start();
+	
 	//! SECTION
-
 	// SECTION - RUN ROS Node
 	while (ros::ok())
 	{
 		// recv data from UDP
-		std::vector<u_char> buf_ = receiveDatagram();
+		std::vector<uint8_t> buf = receiveDatagram();
 
-		if(!buf_.empty())
+		if(!buf.empty())
 		{
-			// kanavi_->process(buf_);
-			kanavi_->process(buf_);
+			mPtrProcess->Process(buf);
 		}
 
 		// get Point Cloud from Lidar processor
-		if (kanavi_->checkedProcessEnd())
+		if (mPtrProcess->IsProcessEnd())
 		{
-			kanavi_->initProcessEnd();
+			mPtrProcess->InitProcessEnd();
 
 			// datagram Length -> pointcloud
-			length2PointCloud(kanavi_->getDatagram());
+			length2PointCloud(mPtrProcess->GetDatagram());
 
 			// rotate Center
-			rotateAxisZ(g_pointcloud, rotate_angle);
+			rotateAxisZ(mPtrPointCloud, mRotateAngle);
 
 			// streaming..
-			printf("-------r--KANAVI PROCESS------------\n");
-			for (size_t i = 0; i < kanavi_->getDatagram().count_ch; ++i) {
-				if (kanavi_->getDatagram().active_ch[i]) 
+			printf("---------KANAVI PROCESS------------\n");
+			
+			for (size_t i = 0; i < mPtrProcess->GetDatagram().GetChannelCount(); ++i) 
+			{
+				if (mPtrProcess->GetDatagram().GetActiveChannels()[i]) 
 				{
-					printf("[NODE] PUBLISHING : %dCH\n", i+1);
+					printf("[NODE] PUBLISHING : %zuCH\n", i+1);
 				}
 			}
-			kanavi_->getDatagram().active_ch.assign(kanavi_->getDatagram().count_ch, false);  
+			mPtrProcess->GetDatagram().GetActiveChannels().assign(mPtrProcess->GetDatagram().GetChannelCount(), false);  
 
-			publisher_.publish(cloud_to_cloud_msg(g_pointcloud->width,
-												  g_pointcloud->height,
-												  *g_pointcloud,
-												  100,
-												  fixedName_));
+			if (!mPtrPointCloud->empty()) 
+			{
+				mPtrPublisher.publish(cloud2CloudMSG(*mPtrPointCloud, mFixedName));
+			}
 
-			g_pointcloud->clear();
+			mPtrPointCloud->clear();
 		}
 	}
 	//! SECTION
 }
 
-void kanavi_node::length2PointCloud(kanaviDatagram datagram)
+void KanaviNode::length2PointCloud(KanaviDatagram datagram)
 {
 	// generate Point Cloud
-	generatePointCloud(datagram, *g_pointcloud);
+	generatePointCloud(datagram, *mPtrPointCloud);
 }
 
-void kanavi_node::calculateAngular(int model)
+void KanaviNode::CalculateAngular(int model)
 {
-	switch (model)
+	switch (model) 
 	{
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R2:
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL; i++)
+	case kanavi::common::protocol::eModel::R2:
+		for (int i = 0; i < kanavi::common::specification::R2::VERTICAL_CHANNEL; ++i) 
 		{
-			v_sin.push_back(sin(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_RESOLUTION * i)));
-			v_cos.push_back(cos(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_RESOLUTION * i)));
+			mVecVerticalSin.push_back(sin(DEG2RAD(kanavi::common::specification::R2::VERTICAL_RESOLUTION * i)));
+			mVecVerticalCos.push_back(cos(DEG2RAD(kanavi::common::specification::R2::VERTICAL_RESOLUTION * i)));
 		}
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_DATA_CNT; i++)
+		for (int i = 0; i < kanavi::common::specification::R2::HORIZONTAL_DATA_CNT; ++i) 
 		{
-			h_sin.push_back(sin(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_RESOLUTION * i)));
-			h_cos.push_back(cos(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_RESOLUTION * i)));
-		}
-		break;
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4:
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL; i++)
-		{
-			v_sin.push_back(sin(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION * i)));
-			v_cos.push_back(cos(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_RESOLUTION * i)));
-		}
-
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_DATA_CNT; i++)
-		{
-			h_sin.push_back(sin(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION * i)));
-			h_cos.push_back(cos(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_RESOLUTION * i)));
+			mVecHorizontalSin.push_back(sin(DEG2RAD(kanavi::common::specification::R2::HORIZONTAL_RESOLUTION * i)));
+			mVecHorizontalCos.push_back(cos(DEG2RAD(kanavi::common::specification::R2::HORIZONTAL_RESOLUTION * i)));
 		}
 		break;
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270:
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_DATA_CNT; i++)
+	case kanavi::common::protocol::eModel::R4:
+		for (int i = 0; i < kanavi::common::specification::R4::VERTICAL_CHANNEL; ++i) 
 		{
-			h_sin.push_back(sin(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_RESOLUTION * i)));
-			h_cos.push_back(cos(DEG2RAD(KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_RESOLUTION * i)));
+			mVecVerticalSin.push_back(sin(DEG2RAD(kanavi::common::specification::R4::VERTICAL_RESOLUTION * i)));
+			mVecVerticalCos.push_back(cos(DEG2RAD(kanavi::common::specification::R4::VERTICAL_RESOLUTION * i)));
 		}
+		for (int i = 0; i < kanavi::common::specification::R4::HORIZONTAL_DATA_CNT; ++i) 
+		{
+			mVecHorizontalSin.push_back(sin(DEG2RAD(kanavi::common::specification::R4::HORIZONTAL_RESOLUTION * i)));
+			mVecHorizontalCos.push_back(cos(DEG2RAD(kanavi::common::specification::R4::HORIZONTAL_RESOLUTION * i)));
+		}
+		break;
+	case kanavi::common::protocol::eModel::R270:
+		for (int i = 0; i < kanavi::common::specification::R270::HORIZONTAL_DATA_CNT; ++i) 
+		{
+			mVecHorizontalSin.push_back(sin(DEG2RAD(kanavi::common::specification::R270::HORIZONTAL_RESOLUTION * i)));
+			mVecHorizontalCos.push_back(cos(DEG2RAD(kanavi::common::specification::R270::HORIZONTAL_RESOLUTION * i)));
+		}
+		break;
+	default:
+		assert(false && "Unknown model in CalculateAngular");
 		break;
 	}
 }
 
-void kanavi_node::generatePointCloud(const kanaviDatagram &datagram, PointCloudT &cloud_)
+void KanaviNode::generatePointCloud(const KanaviDatagram& datagram, PointCloudT& cloud)
 {
-	switch (datagram.model)
+	switch (datagram.GetModel()) 
 	{
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R2:
-		for (int ch = 0; ch < KANAVI::COMMON::SPECIFICATION::R2::VERTICAL_CHANNEL; ch++)
-		{
-			for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R2::HORIZONTAL_DATA_CNT; i++)
+		case kanavi::common::protocol::eModel::R2:
+			for (int ch = 0; ch < kanavi::common::specification::R2::VERTICAL_CHANNEL; ++ch) 
 			{
-				cloud_.push_back(length2point(datagram.len_buf[ch][i], v_sin[ch], v_cos[ch], h_sin[i], h_cos[i]));
+				for (int i = 0; i < kanavi::common::specification::R2::HORIZONTAL_DATA_CNT; ++i) 
+				{
+					cloud.push_back(length2Point(datagram.GetLengthBuffer()[ch][i], 
+												mVecVerticalSin[ch], mVecVerticalCos[ch],
+												mVecHorizontalSin[i], mVecHorizontalCos[i]));
+				}
 			}
-		}
-		break;
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R4:
-		for (int ch = 0; ch < KANAVI::COMMON::SPECIFICATION::R4::VERTICAL_CHANNEL; ch++)
-		{
-			for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R4::HORIZONTAL_DATA_CNT; i++)
+			break;
+		case kanavi::common::protocol::eModel::R4:
+			for (int ch = 0; ch < kanavi::common::specification::R4::VERTICAL_CHANNEL; ++ch) 
 			{
-				cloud_.push_back(length2point(datagram.len_buf[ch][i], v_sin[ch], v_cos[ch], h_sin[i], h_cos[i]));
+				for (int i = 0; i < kanavi::common::specification::R4::HORIZONTAL_DATA_CNT; ++i) 
+				{
+					cloud.push_back(length2Point(datagram.GetLengthBuffer()[ch][i],
+												mVecVerticalSin[ch], mVecVerticalCos[ch],
+												mVecHorizontalSin[i], mVecHorizontalCos[i]));
+				}
 			}
-		}
-		break;
-	case KANAVI::COMMON::PROTOCOL_VALUE::MODEL::R270:
-
-		for (int i = 0; i < KANAVI::COMMON::SPECIFICATION::R270::HORIZONTAL_DATA_CNT; i++)
-		{
-			cloud_.push_back(length2point(datagram.len_buf[0][i], 0, 1, h_sin[i], h_cos[i]));
-		}
-
-		break;
+			break;
+		case kanavi::common::protocol::eModel::R270:
+			cloud.width = kanavi::common::specification::R270::HORIZONTAL_DATA_CNT;
+			cloud.height = kanavi::common::specification::R270::VERTICAL_CHANNEL;
+			for (int i = 0; i < kanavi::common::specification::R270::HORIZONTAL_DATA_CNT; ++i) 
+			{
+				cloud.push_back(length2Point(datagram.GetLengthBuffer()[0][i], 0, 1,
+											mVecHorizontalSin[i], mVecHorizontalCos[i]));
+			}
+			break;
+		default:
+			assert(false && "Unknown model in generatePointCloud");
+			break;
 	}
 }
 
-PointT kanavi_node::length2point(float len, float v_sin, float v_cos, float h_sin, float h_cos)
+PointT KanaviNode::length2Point(float len, float vSin, float vCos, float hSin, float hCos)
 {
-	pcl::PointXYZRGB p_;
+	pcl::PointXYZRGB point;
 
-	p_.x = len * v_cos * h_cos;
-	p_.y = len * v_cos * h_sin;
-	p_.z = len * v_sin;
+	point.x = len * vCos * hCos;
+	point.y = len * vCos * hSin;
+	point.z = len * vSin;
 
 	float r, g, b;
-	HSV2RGB(&r, &g, &b, len * 20, 1.0, 1.0); // convert hsv to rgb
-	p_.r = r * 255;
-	p_.g = g * 255;
-	p_.b = b * 255;
+	hsv2Rgb(&r, &g, &b, len * 20.f, 1.0f, 1.0f); // convert hsv to rgb
+	point.r = r * 255.f;
+	point.g = g * 255.f;
+	point.b = b * 255.f;
 
-	return p_;
+	return point;
 }
 
-void kanavi_node::HSV2RGB(float *fR, float *fG, float *fB, float fH, float fS, float fV)
+void KanaviNode::hsv2Rgb(float* fR, float* fG, float* fB, float fH, float fS, float fV)
 {
 	float fC = fV * fS;
-	float fHPrime = fmod(fH / 60.0, 6);
-	float fX = fC * (1 - fabs(fmod(fHPrime, 2) - 1));
-	float fM = fV - fC;
+	float fHPrime = fmod(fH / 60.0f, 6.0f);
+	float fX = fC * (1 - fabs(fmod(fHPrime, 2.0f) - 1.0f));
 
 	if (0 <= fHPrime && fHPrime < 1)
 	{
 		*fR = fC;
 		*fG = fX;
-		*fB = 0;
+		*fB = 0.0f;
 	}
 	else if (0 <= fHPrime && fHPrime < 2)
 	{
 		*fR = fX;
 		*fG = fC;
-		*fB = 0;
+		*fB = 0.0f;
 	}
 	else if (0 <= fHPrime && fHPrime < 3)
 	{
-		*fR = 0;
+		*fR = 0.0f;
 		*fG = fC;
 		*fB = fX;
 	}
 	else if (0 <= fHPrime && fHPrime < 4)
 	{
-		*fR = 0;
+		*fR = 0.0f;
 		*fG = fX;
 		*fB = fC;
 	}
 	else if (0 <= fHPrime && fHPrime < 5)
 	{
 		*fR = fX;
-		*fG = 0;
+		*fG = 0.0f;
 		*fB = fC;
 	}
 	else if (0 <= fHPrime && fHPrime < 6)
 	{
 		*fR = fC;
-		*fG = 0;
+		*fG = 0.0f;
 		*fB = fX;
 	}
 	else
 	{
-		*fR = 0;
-		*fG = 0;
-		*fB = 0;
+		*fR = 0.0f;
+		*fG = 0.0f;
+		*fB = 0.0f;
 	}
 }
 
-sensor_msgs::PointCloud2 kanavi_node::cloud_to_cloud_msg(int ww, int hh, const pcl::PointCloud<pcl::PointXYZRGB> &cloud, int timestamp, const std::string &frame)
+sensor_msgs::PointCloud2 KanaviNode::cloud2CloudMSG(const pcl::PointCloud<pcl::PointXYZRGB>& cloud, const std::string& frame)
 {
 	sensor_msgs::PointCloud2 msg{};
 	pcl::toROSMsg(cloud, msg);
 
-	// msg.header.stamp.fromNSec(100000000);
 	msg.header.stamp = ros::Time::now();
-
 	msg.header.frame_id = frame;
 
 	return msg;
 }
 
-void kanavi_node::rotateAxisZ(PointCloudT::Ptr cloud, float angle)
+void KanaviNode::rotateAxisZ(PointCloudT::Ptr cloud, float angle)
 {
 	float rad = pcl::deg2rad(angle);
-	Eigen::Matrix4f m_ = Eigen::Matrix4f::Identity();
-	m_(0, 0) = cos(rad);
-	m_(0, 1) = -sin(rad);
-	m_(1, 0) = sin(rad);
-	m_(1, 1) = cos(rad);
+	Eigen::Matrix4f matrix = Eigen::Matrix4f::Identity();
+	matrix(0, 0) = cos(rad);
+	matrix(0, 1) = -sin(rad);
+	matrix(1, 0) = sin(rad);
+	matrix(1, 1) = cos(rad);
 
-	pcl::transformPointCloud(*cloud, *cloud, m_);
+	pcl::transformPointCloud(*cloud, *cloud, matrix);
 }

@@ -1,3 +1,4 @@
+#pragma once	
 #ifndef __ARGV_PARSER_H__
 #define __ARGV_PARSER_H__
 
@@ -20,31 +21,22 @@
  */
 
 #include <iostream>
-#include "common.h"
 #include <string>
+
+#include "common.h"
 
 /**
  * @brief define user structure for argv
  * 
  */
-struct argvContainer
+struct ArgvContainer
 {
-	std::string local_ip;		// local IP address
-	int port;					// port number
-	bool checked_multicast;		// checked multicast
-	std::string multicast_ip;	// multicast IP address
-	std::string topicName;		// ROS Node topic Name
-	std::string fixedName;		// ROS Node Fixed Name
-	
-	argvContainer(){
-		// set defalut Values
-		local_ip = KANAVI::COMMON::default_local_IP;
-		port = KANAVI::COMMON::default_port_num;
-		multicast_ip = KANAVI::COMMON::default_multicast_IP;
-		checked_multicast = false;
-		topicName = KANAVI::COMMON::ROS_TOPIC_NAME;
-		fixedName = KANAVI::COMMON::ROS_FIXED_NAME;
-	}
+	std::string local_ip = kanavi::common::DEFAULT_LOCAL_IP;		// local IP address
+	int port = kanavi::common::DEFAULT_PORT_NUM;					// port number
+	bool checked_multicast = false;		// checked multicast
+	std::string multicast_ip = kanavi::common::DEFAULT_MULTICAST_IP;	// multicast IP address
+	std::string topicName = kanavi::common::ROS_TOPIC_NAME;		// ROS Node topic Name
+	std::string fixedName = kanavi::common::ROS_FIXED_NAME;		// ROS Node Fixed Name
 };
 
 
@@ -52,12 +44,22 @@ struct argvContainer
  * @class argv_parser
  * @brief Parses command-line arguments to extract program configurations and options.
  */
-class argv_parser
+class ArgvParser
 {
-private:
-	/* data */
-	argvContainer argvResult;
+public:
+	ArgvParser(const int& argc, char** argv)
+	{
+		parseArgv(argc, argv);
+	}
+	~ArgvParser(){}
 
+/**
+ * @brief Returns the parsed command-line parameters.
+ * @return argvContainer An object containing extracted arguments such as IP address, port, topic name, etc.
+ */
+	ArgvContainer GetParameters();
+
+private:
 	// funcs.
 /**
  * @brief Parses command-line arguments.
@@ -65,22 +67,13 @@ private:
  * @param &argc_ The number of command-line arguments.
  * @param **argv_ The array of argument strings passed to the program.
  */
-	void parseArgv(const int &argc_, char **argv_);
+	void parseArgv(const int& argc, char** argv);
 	
+	/* data */
+	ArgvContainer mArgvResult;
+
 	// Vars.
 
-public:
-	argv_parser(const int &argc_, char **argv_)
-	{
-		parseArgv(argc_, argv_);
-	}
-	~argv_parser(){}
-
-/**
- * @brief Returns the parsed command-line parameters.
- * @return argvContainer An object containing extracted arguments such as IP address, port, topic name, etc.
- */
-	argvContainer getParameters();
 };
 
 /**
@@ -89,33 +82,33 @@ public:
  * @param &argc_ The number of command-line arguments.
  * @param **argv_ The array of argument strings passed to the program.
  */
-inline void argv_parser::parseArgv(const int &argc_, char **argv_)
+inline void ArgvParser::parseArgv(const int& argc, char** argv)
 {
-	if(argc_  == 0)
+	if(0 == argc)
 	{
 		printf("Active Defalut Mode");
-		argvResult.checked_multicast = true;
+		mArgvResult.checked_multicast = true;
 	}
 
-	for(int i=0; i<argc_; i++)
+	for(int i=0; i<argc; i++)
 	{
-		if(!strcmp(argv_[i], KANAVI::ROS::PARAMETER_IP.c_str()))		// check ARGV - IP & port num.
+		if(!strcmp(argv[i], kanavi::ros::PARAMETER_IP))		// check ARGV - IP & port num.
 		{
-			argvResult.local_ip = argv_[i+1];
-			argvResult.port = atoi(argv_[i+2]);
+			mArgvResult.local_ip = argv[i+1];
+			mArgvResult.port = atoi(argv[i+2]);
 		}
-		else if(!strcmp(argv_[i], KANAVI::ROS::PARAMETER_Multicast.c_str()))	// check ARGV - udp multicast ip
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_MULTICAST))	// check ARGV - udp multicast ip
 		{
-			argvResult.checked_multicast = true;
-			argvResult.multicast_ip = argv_[i+1];
+			mArgvResult.checked_multicast = true;
+			mArgvResult.multicast_ip = argv[i+1];
 		}
-		else if(!strcmp(argv_[i], KANAVI::ROS::PARAMETER_FIXED.c_str()))							// check ARGV - ROS Fixed name
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_FIXED))							// check ARGV - ROS Fixed name
 		{
-			argvResult.fixedName = argv_[i+1];
+			mArgvResult.fixedName = argv[i+1];
 		}
-		else if(!strcmp(argv_[i], KANAVI::ROS::PARAMETER_TOPIC.c_str()))							// check ARGV - ROS topic name
+		else if(!strcmp(argv[i], kanavi::ros::PARAMETER_TOPIC))							// check ARGV - ROS topic name
 		{
-			argvResult.topicName = argv_[i+1];
+			mArgvResult.topicName = argv[i+1];
 		}
 	}
 
@@ -125,9 +118,9 @@ inline void argv_parser::parseArgv(const int &argc_, char **argv_)
  * @brief Returns the parsed command-line parameters.
  * @return argvContainer An object containing extracted arguments such as IP address, port, topic name, etc.
  */
-inline argvContainer argv_parser::getParameters()
+inline ArgvContainer ArgvParser::GetParameters()
 {
-	return argvResult;;
+	return mArgvResult;
 }
 
 #endif // __ARGV_PARSER_H__
