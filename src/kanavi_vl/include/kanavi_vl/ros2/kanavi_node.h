@@ -1,3 +1,4 @@
+#pragma once
 #ifndef __KANAVI_NODE_H__
 #define __KANAVI_NODE_H__
 
@@ -19,27 +20,26 @@
  * 
  */
 
-#include <rclcpp/rclcpp.hpp>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
+#include <chrono>
 #include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
 #include <pcl/common/impl/angles.hpp>
+#include <pcl/common/transforms.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.h>
 #include <sensor_msgs/point_cloud_conversion.hpp>
 #include <std_msgs/msg/string.hpp>
-
-#include <chrono>
 #include <string>
 
 #include "argv_parser.hpp"
-#include "udp.h"
+#include "kanavi_datagram.h"
 #include "kanavi_lidar.h"
+#include "udp.h"	
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
-using namespace std::chrono_literals;  // "10ms"와 같은 단위 사용을 위해 필요
 
 /**
  * @class kanavi_node
@@ -48,16 +48,28 @@ using namespace std::chrono_literals;  // "10ms"와 같은 단위 사용을 위�
  * This class manages receiving LiDAR data via UDP, parsing it into structured
  * data formats, converting it into PCL point clouds, and publishing to ROS topics.
  */
-class kanavi_node : public rclcpp::Node
+class KanaviNode
+: public rclcpp::Node
 {
-private:
-
-	//SECTION - FUNCS.
+public:
+/**
+ * @brief Constructor for kanavi_node, sets up the ROS2 node.
+ * @param node_ Node name.
+ * @param argc_ Argument count.
+ * @param argv_ Argument values.
+ */
+	KanaviNode(const std::string& node, int& argc, char** argv);
+	~KanaviNode();
 
 /**
- * @brief Prints help information for using command-line arguments.
+ * @brief Calculates angular resolution and alignment based on LiDAR model.
+ * @param model LiDAR model type (e.g., R2, R4, R270).
  */
-	void helpAlarm();
+	void CalculateAngular(int model);
+
+private:
+
+//SECTION - FUNCS.
 
 /**
  * @brief Receives UDP data from the LiDAR and initiates parsing.
@@ -72,32 +84,31 @@ private:
 /**
  * @brief Sets up the logging parameters for the ROS2 node.
  */
-	void log_set_parameters();
-
+	void setLogParameters();
 
 /**
  * @brief Converts raw datagram into an internal point cloud representation.
  * @param datagram Parsed datagram from LiDAR sensor.
  */
-	void length2PointCloud(kanaviDatagram datagram);
+	void length2PointCloud(KanaviDatagram datagram);
 
 /**
- * @brief Converts a kanaviDatagram into a PCL-compatible point cloud.
- * @param datagram Parsed kanaviDatagram.
+ * @brief Converts a KanaviDatagram into a PCL-compatible point cloud.
+ * @param datagram Parsed KanaviDatagram.
  * @param cloud_ Output point cloud.
  */
-	void generatePointCloud(const kanaviDatagram &datagram, PointCloudT &cloud_);
+	void generatePointCloud(const KanaviDatagram& datagram, PointCloudT& cloud);
 
 /**
  * @brief Converts a length measurement and trigonometric values to a 3D point.
  * @param len Distance measurement.
- * @param v_sin Vertical sine.
- * @param v_cos Vertical cosine.
- * @param h_sin Horizontal sine.
- * @param h_cos Horizontal cosine.
+ * @param vSin Vertical sine.
+ * @param vCos Vertical cosine.
+ * @param hSin Horizontal sine.
+ * @param hCos Horizontal cosine.
  * @return Computed 3D point(XYZRGB).
  */
-	PointT length2point(float len, float v_sin, float v_cos, float h_sin, float h_cos);
+	PointT length2Point(float len, float vSin, float vCos, float hSin, float hCos);
 
 /**
  * @brief Rotates the point cloud around the Z-axis by a given angle.
@@ -105,7 +116,6 @@ private:
  * @param angle Rotation angle in radians.
  */
 	void rotateAxisZ(PointCloudT::Ptr cloud, float angle);
-	
 
 /**
  * @brief Converts HSV color to RGB color.
@@ -116,78 +126,59 @@ private:
  * @param fS Saturation component.
  * @param fV Value component.
  */
-	void HSV2RGB(float *fR, float *fG, float *fB, float fH, float fS, float fV);
+	void hsv2Rgb(float* fR, float* fG, float* fB, float fH, float fS, float fV);
 
 /**
  * @brief Publishes the given point cloud to a ROS2 topic.
- * @param cloud_ Point cloud to publish.
+ * @param cloud Point cloud to publish.
  */
-	void publish_pointcloud(PointCloudT::Ptr cloud_);
-	// need process...
+	void publishPointCloud(PointCloudT::Ptr cloud);
 	
-	//!SETCION
+//!SETCION
 
 	/* data */
 	//SECTION - Variables
 
 	// argv parse Class
-	std::unique_ptr<argv_parser> m_argv;
+	std::unique_ptr<ArgvParser> mArgv;
 	
 	// Network
-	std::string local_ip_;
-	int port_;
-	std::string multicast_ip_;
+	std::string mLocalIP;
+	int mPort;
+	std::string mMulticastIP;
 
 	// ROS
-	std::string topicName_;
-	std::string fixedName_;
-	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
+	std::string mTopicName;
+	std::string mFixedName;
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr mPtrPublisher;
+	
 	// timer for RECV
-	rclcpp::TimerBase::SharedPtr timer_;
+	rclcpp::TimerBase::SharedPtr mPtrTimer;
 
 	// flags
-	bool checked_multicast_;
-	bool checked_help_;
+	bool mbCheckedMulticast;
+	bool mbCheckedDebug;
+	bool mbCheckedTimestamp;
 
 	// rotate angle
-	float rotate_angle;
-
-	// datagram
-	kanaviDatagram g_datagram;
+	float mRotateAngle;
 
 	// sin, cos value for calculate Angle
-	std::vector<float> v_sin;
-	std::vector<float> v_cos;
-	std::vector<float> h_sin;
-	std::vector<float> h_cos;
+	std::vector<float> mVecVerticalSin;
+	std::vector<float> mVecVerticalCos;
+	std::vector<float> mVecHorizontalSin;
+	std::vector<float> mVecHorizontalCos;
 
 	// pcl point cloud 
-	PointCloudT::Ptr g_pointcloud;
+	PointCloudT::Ptr mPtrPointCloud;
 
 	// UDP network
-	std::unique_ptr<kanavi_udp> m_udp;
+	std::unique_ptr<KanaviUDP> mPtrUDP;
 
 	// LiDAR Processor
-	std::unique_ptr<kanavi_lidar> m_process;
+	std::unique_ptr<KanaviLidar> mPtrProcess;
 
-	//!SECTION	
+//!SECTION	
 
-public:
-/**
- * @brief Constructor for kanavi_node, sets up the ROS2 node.
- * @param node_ Node name.
- * @param argc_ Argument count.
- * @param argv_ Argument values.
- */
-	kanavi_node(const std::string &node_, int &argc_, char **argv_);
-	~kanavi_node();
-
-/**
- * @brief Calculates angular resolution and alignment based on LiDAR model.
- * @param model LiDAR model type (e.g., R2, R4, R270).
- */
-	void calculateAngular(int model);
-
-	// void publishing();
 };
 #endif // __KANAVI_NODE_H__

@@ -71,7 +71,8 @@ if($ENV{ROS_VERSION} STREQUAL "1")
 	src/udp/udp.cpp)
 
 	add_library(kanavi_lidar
-	src/lidar/kanavi_lidar.cpp)
+	src/lidar/kanavi_lidar.cpp
+	src/lidar/kanavi_datagram.cpp)
 
 	
 ###########
