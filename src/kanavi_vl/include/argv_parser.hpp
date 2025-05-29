@@ -88,7 +88,7 @@ inline void ArgvParser::parseArgv(const int& argc, char** argv)
 {
 	if(0 == argc)
 	{
-		printf("Active Defalut Mode");
+		printf("Active Default Mode");
 		mArgvResult.checkedMulticast = true;
 	}
 
