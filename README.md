@@ -25,7 +25,7 @@
 | ROS Version | Ubuntu 18.04 | Ubuntu 20.04 | Ubuntu 22.04 | Ubuntu 24.04 |
 |-------------|---------------|---------------|---------------|---------------|
 | **ROS1** | ✅ Melodic | ✅ Noetic | - | - |
-| **ROS2** | - | ✅ Foxy | ✅ Humble | ⚠️ Jazzy/Rolling |
+| **ROS2** | - | ✅ Foxy | ✅ Humble | ✅ Jazzy |
 
 > ✅ **Tested** | ⚠️ **Not tested**
 
@@ -55,7 +55,7 @@ rosrun kanavi_vl R4 -i 192.168.123.100 5000 -m 224.0.0.5 -d
 </details>
 
 <details>
-<summary>🟠 <b>ROS2 (Humble / Foxy)</b></summary>
+<summary>🟠 <b>ROS2 (Humble / Foxy / Jazzy)</b></summary>
 
 ```bash
 # Build

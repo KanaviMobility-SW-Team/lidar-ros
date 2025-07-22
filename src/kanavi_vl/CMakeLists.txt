@@ -144,6 +144,14 @@ find_package(rosidl_default_runtime REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(EIGEN eigen3 REQUIRED)
 
+# 24.04 Jazzy Settings
+if(DEFINED ENV{ROS_DISTRO} AND "$ENV{ROS_DISTRO}" STREQUAL "jazzy")
+find_package(type_description_interfaces REQUIRED)
+include_directories(
+	${type_description_interfaces_INCLUDE_DIRS}
+)
+endif()
+
 set(THIS_PACKAGE_INCLUDE_DEPENDS
 	ament_cmake
 	rclcpp
